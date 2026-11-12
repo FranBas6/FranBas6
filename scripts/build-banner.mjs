@@ -3,52 +3,42 @@ import { readFile, writeFile } from 'node:fs/promises';
 const LOGIN = process.env.GH_LOGIN || 'FranBas6';
 const OUTPUT = new URL('../banner.svg', import.meta.url);
 const FONT = new URL('./manrope-latin-variable.woff2', import.meta.url);
-const DAY_MS = 86400000;
-
-const QUERY = `query($login: String!, $from: DateTime!, $to: DateTime!) {
-  user(login: $login) {
-    createdAt
-    contributionsCollection(from: $from, to: $to) {
-      contributionCalendar { weeks { contributionDays { date contributionCount } } }
+const getText = async (url) => {
+    const response = await fetch(url, { headers: { 'User-Agent': `${LOGIN}-profile-banner` } });
+    if (!response.ok) {
+        throw new Error(`${url} answered ${response.status}`);
     }
-  }
-}`;
-
-const graphql = async (token, variables) => {
-    const response = await fetch('https://api.github.com/graphql', {
-        method: 'POST',
-        headers: { Authorization: `bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: QUERY, variables }),
-    });
-    const body = await response.json();
-    if (!response.ok || body.errors) {
-        throw new Error(`GraphQL request failed: ${JSON.stringify(body.errors || body)}`);
-    }
-    return body.data.user;
+    return response.text();
 };
 
-const fetchDays = async (token) => {
-    const now = new Date();
-    const firstPage = await graphql(token, {
-        login: LOGIN,
-        from: new Date(now.getTime() - 364 * DAY_MS).toISOString(),
-        to: now.toISOString(),
-    });
-    const days = new Map();
-    const firstYear = new Date(firstPage.createdAt).getUTCFullYear();
-    for (let year = firstYear; year <= now.getUTCFullYear(); year++) {
-        const page = await graphql(token, {
-            login: LOGIN,
-            from: `${year}-01-01T00:00:00Z`,
-            to: year === now.getUTCFullYear() ? now.toISOString() : `${year}-12-31T23:59:59Z`,
-        });
-        for (const week of page.contributionsCollection.contributionCalendar.weeks) {
-            for (const day of week.contributionDays) {
-                days.set(day.date, day.contributionCount);
-            }
+const parseCalendar = (html, year) => {
+    const tooltips = new Map();
+    for (const [, id, text] of html.matchAll(/<tool-tip[^>]*\bfor="([^"]+)"[^>]*>([^<]*)<\/tool-tip>/g)) {
+        tooltips.set(id, text.trim());
+    }
+    const days = [];
+    for (const [cell] of html.matchAll(/<td\b[^>]*\bdata-date="\d{4}-\d{2}-\d{2}"[^>]*>/g)) {
+        const date = cell.match(/data-date="([^"]+)"/)[1];
+        const id = cell.match(/\bid="([^"]+)"/)?.[1];
+        const count = tooltips.get(id)?.match(/^(\d[\d,]*) contribution/)?.[1];
+        if (date.startsWith(String(year))) {
+            days.push([date, count ? Number(count.replace(/,/g, '')) : 0]);
         }
     }
-    return [...days.entries()].sort(([a], [b]) => a.localeCompare(b));
+    if (days.length === 0 || tooltips.size === 0) {
+        throw new Error(`No contribution calendar found for ${year}; the page markup may have changed.`);
+    }
+    return days;
+};
+
+const fetchDays = async () => {
+    const user = JSON.parse(await getText(`https://api.github.com/users/${LOGIN}`));
+    const days = [];
+    for (let year = new Date(user.created_at).getUTCFullYear(); year <= new Date().getUTCFullYear(); year++) {
+        const html = await getText(`https://github.com/users/${LOGIN}/contributions?from=${year}-01-01&to=${year}-12-31`);
+        days.push(...parseCalendar(html, year));
+    }
+    return days.sort(([a], [b]) => a.localeCompare(b));
 };
 
 const readDaysFile = async (path) => {
@@ -326,7 +316,7 @@ const main = async () => {
     const daysFile = process.argv.indexOf('--days');
     const days = daysFile > -1
         ? await readDaysFile(process.argv[daysFile + 1])
-        : await fetchDays(process.env.GITHUB_TOKEN);
+        : await fetchDays();
     const today = process.env.STATS_TODAY || isoDay(new Date());
     const stats = computeStats(days, today);
     const font = (await readFile(FONT)).toString('base64');

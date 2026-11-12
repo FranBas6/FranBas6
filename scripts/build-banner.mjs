@@ -223,7 +223,7 @@ const person = `
 
 export const renderBanner = (stats, fontBase64) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" width="1200" height="420" role="img" aria-labelledby="title desc">
   <title id="title">Francisco José Bas Guil · Full stack Software Developer</title>
-  <desc id="desc">Night desk scene. One monitor types code, the other shows ${formatNumber(stats.contributions)} contributions in the last 12 months, ${formatNumber(stats.activeDays)} active days, a ${stats.currentStreak}-day current streak and a ${stats.longestStreak}-day longest streak.</desc>
+  <desc id="desc">Night desk scene. One monitor types code, the other shows ${formatNumber(stats.contributions)} contributions in the last 12 months, ${formatNumber(stats.activeDays)} active days, a current streak of ${stats.currentStreak} days and a longest streak of ${stats.longestStreak} days.</desc>
   <style>
     @font-face { font-family: 'Manrope'; src: url(data:font/woff2;base64,${fontBase64}) format('woff2'); font-weight: 200 800; }
     text { font-family: 'Manrope', 'Segoe UI', sans-serif; }

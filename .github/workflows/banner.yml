@@ -26,7 +26,6 @@ jobs:
       - name: Build banner.svg with the latest contribution stats
         run: node scripts/build-banner.mjs
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_LOGIN: ${{ github.repository_owner }}
       - name: Commit if the banner changed
         run: |

@@ -3,12 +3,25 @@ import { readFile, writeFile } from 'node:fs/promises';
 const LOGIN = process.env.GH_LOGIN || 'FranBas6';
 const OUTPUT = new URL('../banner.svg', import.meta.url);
 const FONT = new URL('./manrope-latin-variable.woff2', import.meta.url);
+const RETRYABLE_STATUSES = [403, 429, 500, 502, 503, 504];
+const ATTEMPTS = 4;
+const RETRY_DELAY_MS = 15000;
+
 const getText = async (url) => {
-    const response = await fetch(url, { headers: { 'User-Agent': `${LOGIN}-profile-banner` } });
-    if (!response.ok) {
-        throw new Error(`${url} answered ${response.status}`);
+    const headers = { 'User-Agent': `${LOGIN}-profile-banner` };
+    if (url.startsWith('https://api.github.com/') && process.env.GITHUB_TOKEN) {
+        headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
     }
-    return response.text();
+    for (let attempt = 1; ; attempt++) {
+        const response = await fetch(url, { headers });
+        if (response.ok) {
+            return response.text();
+        }
+        if (attempt === ATTEMPTS || !RETRYABLE_STATUSES.includes(response.status)) {
+            throw new Error(`${url} answered ${response.status} after ${attempt} attempt(s)`);
+        }
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+    }
 };
 
 const parseCalendar = (html, year) => {

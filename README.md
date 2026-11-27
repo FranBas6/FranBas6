@@ -6,7 +6,7 @@
 
 Full stack Software Developer in Spain. I build a SaaS TMS for transport companies in Norway: the web platform in Laravel and the drivers' app in Flutter, with AI and OCR in production.
 
-[Portfolio](https://franbasguil.netlify.app/en/) · [Versión en español](https://franbasguil.netlify.app/es/) · [LinkedIn](https://www.linkedin.com/in/franbasguil) · [Email](mailto:franbasguil@gmail.com)
+[Portfolio](https://franbasguil.pages.dev/en/) · [Versión en español](https://franbasguil.pages.dev/es/) · [LinkedIn](https://www.linkedin.com/in/franbasguil) · [Email](mailto:franbasguil@gmail.com)
 
 #### Personal projects
 
